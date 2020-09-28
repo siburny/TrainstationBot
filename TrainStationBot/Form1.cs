@@ -33,6 +33,7 @@ namespace TrainStationBot
             ads.Add(new Mat(@"c:\Projects\C#\TrainStationBot\TrainStationBot\images\ads\ad3.png").CvtColor(ColorConversionCodes.BGR2GRAY));
             ads.Add(new Mat(@"c:\Projects\C#\TrainStationBot\TrainStationBot\images\ads\ad4.png").CvtColor(ColorConversionCodes.BGR2GRAY));
             ads.Add(new Mat(@"c:\Projects\C#\TrainStationBot\TrainStationBot\images\ads\ad5.png").CvtColor(ColorConversionCodes.BGR2GRAY));
+            ads.Add(new Mat(@"c:\Projects\C#\TrainStationBot\TrainStationBot\images\ads\ad6.png").CvtColor(ColorConversionCodes.BGR2GRAY));
 
             arrow = new Mat(@"c:\Projects\C#\TrainStationBot\TrainStationBot\images\arrow.png").CvtColor(ColorConversionCodes.BGR2GRAY);
             box = new Mat(@"c:\Projects\C#\TrainStationBot\TrainStationBot\images\box.png").CvtColor(ColorConversionCodes.BGR2GRAY);
@@ -79,8 +80,6 @@ namespace TrainStationBot
 
                 using (var image = ScreenUtilities.CaptureWindow(GameWindowHandle))
                 {
-                    image.Save(@"c:\Projects\C#\TrainStationBot\TrainStationBot\images\output\screen-" + DateTime.Now.ToString("yyyyMMddHHmmss") + ".jpg");
-
                     screen_rgb = image.ToMat();
                     screen_gray = screen_rgb.CvtColor(ColorConversionCodes.BGRA2GRAY);
 
@@ -110,6 +109,8 @@ namespace TrainStationBot
 
                     if (!IsActive) return;
                     Invoke(new Action(() => { PictureBoxOutput.Image = screen_rgb.ToBitmap(); }));
+
+                    screen_rgb.SaveImage(@"c:\Projects\C#\TrainStationBot\TrainStationBot\images\output\screen-" + DateTime.Now.ToString("yyyyMMddHHmmss") + ".jpg");
 
                     screen_rgb.Dispose();
                     screen_gray.Dispose();
@@ -240,11 +241,11 @@ namespace TrainStationBot
             {
                 AddOutput("Found TRAIN: " + maxLocation.X + "x" + maxLocation.Y);
 
-                MouseOperations.MouseClick(maxLocation.X + GameWindowPosition.left + 20, 839 + GameWindowPosition.top);
+                MouseOperations.MouseClick(maxLocation.X + GameWindowPosition.left + 20, 810 + GameWindowPosition.top);
 
                 WaitNSeconds(250);
 
-                MouseOperations.MouseClick(maxLocation.X + GameWindowPosition.left + 20, 839 + GameWindowPosition.top);
+                MouseOperations.MouseClick(maxLocation.X + GameWindowPosition.left + 20, 810 + GameWindowPosition.top);
 
                 WaitNSeconds(250);
 
