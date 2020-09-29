@@ -292,7 +292,7 @@ namespace TrainStationBot
 
                 WaitNSeconds(250);
 
-                MouseOperations.MouseClick(520 + GameWindowPosition.left, 906 + GameWindowPosition.top);
+                MouseOperations.MouseClick(500 + GameWindowPosition.left, 906 + GameWindowPosition.top);
 
                 WaitNSeconds(250);
 
