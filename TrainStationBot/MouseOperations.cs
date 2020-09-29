@@ -68,7 +68,7 @@ public class MouseOperations
         {
             MouseEvent(MouseEventFlags.LeftDown | MouseEventFlags.LeftUp);
 
-            //SetCursorPosition(pos);
+            SetCursorPosition(pos);
         }
     }
 

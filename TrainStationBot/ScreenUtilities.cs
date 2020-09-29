@@ -101,7 +101,7 @@ namespace TrainStationBot
         [DllImport("USER32.DLL")]
         private static extern IntPtr GetShellWindow();
 
-        public const int SRCCOPY = 0x00CC0020; // BitBlt dwRop parameter
+        public const int SRCCOPY = 0x00CC0020;
         [DllImport("gdi32.dll")]
         public static extern bool BitBlt(IntPtr hObject, int nXDest, int nYDest,
             int nWidth, int nHeight, IntPtr hObjectSource,

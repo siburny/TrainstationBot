@@ -5,8 +5,11 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Windows.Forms;
 using TrainStationBot.Properties;
+using Rectangle = System.Drawing.Rectangle;
 using Color = System.Drawing.Color;
 using SystemColors = System.Drawing.SystemColors;
+using System.IO;
+using System.Text.RegularExpressions;
 
 namespace TrainStationBot
 {
@@ -108,7 +111,7 @@ namespace TrainStationBot
                     CheckForWhistle();
 
                     if (!IsActive) return;
-                    Invoke(new Action(() => { PictureBoxOutput.Image = screen_rgb.ToBitmap(); }));
+                    DoOCR();
 
                     screen_rgb.SaveImage(@"c:\Projects\C#\TrainStationBot\TrainStationBot\images\output\screen-" + DateTime.Now.ToString("yyyyMMddHHmmss") + ".jpg");
 
@@ -118,6 +121,46 @@ namespace TrainStationBot
 
                 Application.DoEvents();
                 if (!IsActive) return;
+            }
+        }
+
+        private void DoOCR()
+        {
+            try
+            {
+                var bitmap = screen_rgb.ToBitmap();
+                string s_people = "",
+                    s_mail = "";
+
+                using (var engine = new Tesseract.TesseractEngine(@"./tessdata", "eng", Tesseract.EngineMode.Default))
+                {
+                    engine.SetVariable("tessedit_char_whitelist", "0123456789");
+                    var people = bitmap.Clone(new Rectangle(230, 250, 130, 25), System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+                    using (var page = engine.Process(people))
+                    {
+                        s_people = Regex.Replace(page.GetText(), "[^0-9]", "");
+                    }
+
+                    var mail = bitmap.Clone(new Rectangle(395, 250, 182, 25), System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+                    using (var page = engine.Process(mail))
+                    {
+                        s_mail = Regex.Replace(page.GetText(), "[^0-9]", "");
+                    }
+                }
+
+                if (string.IsNullOrEmpty(s_people))
+                    s_people = "0";
+                if (string.IsNullOrEmpty(s_mail))
+                    s_mail = "0";
+
+                File.AppendAllLines("output.json", new string[] { "{\"time\": \"" + DateTime.Now.ToString("o") + "\",\"people\": " + s_people + ", \"mail\": " + s_mail + " }" });
+
+                if (!IsActive) return;
+                Invoke(new Action(() => { PictureBoxOutput.Image = bitmap; }));
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show(e.Message + e.StackTrace, "DoOCR Exception");
             }
         }
 
