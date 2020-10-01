@@ -15,10 +15,12 @@ namespace TrainStationBot
 {
     public partial class MainForm : Form
     {
-        private IntPtr GameWindowHandle;
-        private ScreenUtilities.RECT GameWindowPosition;
+        private static IntPtr GameWindowHandle;
+        public static ScreenUtilities.RECT GameWindowPosition;
 
         private bool IsActive = false;
+        private readonly Dictionary<string, List<Tuple<DateTime, int>>> Stats = new Dictionary<string, List<Tuple<DateTime, int>>>() { { "people", new List<Tuple<DateTime, int>>() }, { "mail", new List<Tuple<DateTime, int>>() } };
+        private int Cycle = 0;
 
         public MainForm()
         {
@@ -37,6 +39,7 @@ namespace TrainStationBot
             ads.Add(new Mat(@"c:\Projects\C#\TrainStationBot\TrainStationBot\images\ads\ad4.png").CvtColor(ColorConversionCodes.BGR2GRAY));
             ads.Add(new Mat(@"c:\Projects\C#\TrainStationBot\TrainStationBot\images\ads\ad5.png").CvtColor(ColorConversionCodes.BGR2GRAY));
             ads.Add(new Mat(@"c:\Projects\C#\TrainStationBot\TrainStationBot\images\ads\ad6.png").CvtColor(ColorConversionCodes.BGR2GRAY));
+            ads.Add(new Mat(@"c:\Projects\C#\TrainStationBot\TrainStationBot\images\ads\ad7.png").CvtColor(ColorConversionCodes.BGR2GRAY));
 
             arrow = new Mat(@"c:\Projects\C#\TrainStationBot\TrainStationBot\images\arrow.png").CvtColor(ColorConversionCodes.BGR2GRAY);
             box = new Mat(@"c:\Projects\C#\TrainStationBot\TrainStationBot\images\box.png").CvtColor(ColorConversionCodes.BGR2GRAY);
@@ -87,10 +90,10 @@ namespace TrainStationBot
                     screen_gray = screen_rgb.CvtColor(ColorConversionCodes.BGRA2GRAY);
 
                     if (!IsActive) return;
-                    CheckForBalloon();
+                    if (Cycle % 10 == 0) CheckForAds();
 
                     if (!IsActive) return;
-                    CheckForAds();
+                    CheckForBalloon();
 
                     if (!IsActive) return;
                     CheckForLevelup();
@@ -121,6 +124,8 @@ namespace TrainStationBot
 
                 Application.DoEvents();
                 if (!IsActive) return;
+
+                Cycle++;
             }
         }
 
@@ -153,6 +158,9 @@ namespace TrainStationBot
                 if (string.IsNullOrEmpty(s_mail))
                     s_mail = "0";
 
+                Stats["people"].Add(new Tuple<DateTime, int>(DateTime.Now, int.Parse(s_people)));
+                Stats["mail"].Add(new Tuple<DateTime, int>(DateTime.Now, int.Parse(s_mail)));
+
                 File.AppendAllLines("output.json", new string[] { "{\"time\": \"" + DateTime.Now.ToString("o") + "\",\"people\": " + s_people + ", \"mail\": " + s_mail + " }" });
 
                 if (!IsActive) return;
@@ -173,7 +181,7 @@ namespace TrainStationBot
                 if (maxValue > 0.9)
                 {
                     AddOutput("Found AD at " + maxLocation.X + "x" + maxLocation.Y + ": clicked");
-                    MouseOperations.MouseClick(maxLocation.X + GameWindowPosition.left + ad.Width - 10, maxLocation.Y + GameWindowPosition.top + 10);
+                    MouseOperations.MouseClick(maxLocation.X + ad.Width - 10, maxLocation.Y + 10);
 
                     UpdateScore(TextboxScore1, "AD: " + maxValue.ToString(), Color.LightGreen);
                 }
@@ -188,14 +196,14 @@ namespace TrainStationBot
         {
             Detect("box", box, out double maxValue, out Point maxLocation);
 
-            if (maxValue > 0.9)
+            if (maxValue > 0.85)
             {
                 AddOutput("Found BOX at " + maxLocation.X + "x" + maxLocation.Y + ": clicked it");
-                MouseOperations.MouseClick(maxLocation.X + GameWindowPosition.left + 20, 750 + GameWindowPosition.top);
+                MouseOperations.MouseClick(maxLocation.X + 20, 750);
 
                 WaitNSeconds(100);
 
-                MouseOperations.MouseClick(840 + GameWindowPosition.left, 812 + GameWindowPosition.top);
+                MouseOperations.MouseClick(840, 812);
 
                 UpdateScore(TextboxScore2, "BOX: " + maxValue.ToString(), Color.LightGreen);
             }
@@ -212,7 +220,7 @@ namespace TrainStationBot
             if (maxValue > 0.9)
             {
                 AddOutput("Found BALLOON: " + maxLocation.X + "x" + maxLocation.Y);
-                MouseOperations.MouseClick(maxLocation.X + GameWindowPosition.left + 20, maxLocation.Y + GameWindowPosition.top);
+                MouseOperations.MouseClick(maxLocation.X + 20, maxLocation.Y + 15);
 
                 UpdateScore(TextboxScore3, "BALLOON: " + maxValue.ToString(), Color.LightGreen);
             }
@@ -229,10 +237,10 @@ namespace TrainStationBot
             if (maxValue > 0.9)
             {
                 AddOutput("Found LEVEL UP: " + maxLocation.X + "x" + maxLocation.Y);
-                MouseOperations.MouseClick(maxLocation.X + GameWindowPosition.left + 20, 750 + GameWindowPosition.top);
+                MouseOperations.MouseClick(maxLocation.X + 20, 750);
                 WaitNSeconds(100);
 
-                MouseOperations.MouseClick(840 + GameWindowPosition.left + 20, 884 + GameWindowPosition.top);
+                MouseOperations.MouseClick(840 + 20, 884);
 
                 UpdateScore(TextboxScore4, "LEVEL UP: " + maxValue.ToString(), Color.LightGreen);
             }
@@ -249,7 +257,7 @@ namespace TrainStationBot
             if (maxValue > 0.9)
             {
                 AddOutput("Found DAILY REWARD: " + maxLocation.X + "x" + maxLocation.Y);
-                MouseOperations.MouseClick(840 + GameWindowPosition.left + 20, 779 + GameWindowPosition.top);
+                MouseOperations.MouseClick(840 + 20, 779);
 
                 UpdateScore(TextboxScore8, "DAILY REWARD: " + maxValue.ToString(), Color.LightGreen);
             }
@@ -266,7 +274,7 @@ namespace TrainStationBot
             if (maxValue > 0.9)
             {
                 AddOutput("Found BONUS: " + maxLocation.X + "x" + maxLocation.Y);
-                MouseOperations.MouseClick(maxLocation.X + GameWindowPosition.left + 20, maxLocation.Y + 20 + GameWindowPosition.top);
+                MouseOperations.MouseClick(maxLocation.X + 20, maxLocation.Y + 20);
 
                 UpdateScore(TextboxScore5, "BONUS: " + maxValue.ToString(), Color.LightGreen);
             }
@@ -284,19 +292,19 @@ namespace TrainStationBot
             {
                 AddOutput("Found TRAIN: " + maxLocation.X + "x" + maxLocation.Y);
 
-                MouseOperations.MouseClick(maxLocation.X + GameWindowPosition.left + 20, 810 + GameWindowPosition.top);
+                MouseOperations.MouseClick(900, 810);
 
                 WaitNSeconds(250);
 
-                MouseOperations.MouseClick(maxLocation.X + GameWindowPosition.left + 20, 810 + GameWindowPosition.top);
+                MouseOperations.MouseClick(900, 810);
 
                 WaitNSeconds(250);
 
-                MouseOperations.MouseClick(500 + GameWindowPosition.left, 906 + GameWindowPosition.top);
+                MouseOperations.MouseClick(500, 906);
 
                 WaitNSeconds(250);
 
-                MouseOperations.MouseClick(920 + GameWindowPosition.left, 730 + GameWindowPosition.top);
+                MouseOperations.MouseClick(920, 730);
 
                 UpdateScore(TextboxScore6, "TRAIN: " + maxValue.ToString(), Color.LightGreen);
             }
@@ -313,7 +321,7 @@ namespace TrainStationBot
             if (maxValue > 0.95)
             {
                 AddOutput("Found WHISTLE: " + maxLocation.X + "x" + maxLocation.Y);
-                MouseOperations.MouseClick(maxLocation.X + GameWindowPosition.left + 20, maxLocation.Y + 20 + GameWindowPosition.top);
+                MouseOperations.MouseClick(maxLocation.X + 20, maxLocation.Y + 20);
 
                 UpdateScore(TextboxScore7, "WHISTLE: " + maxValue.ToString(), Color.LightGreen);
             }
