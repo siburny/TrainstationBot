@@ -10,6 +10,9 @@ using Color = System.Drawing.Color;
 using SystemColors = System.Drawing.SystemColors;
 using System.IO;
 using System.Text.RegularExpressions;
+using EmbedIO;
+using EmbedIO.Actions;
+using System.Linq;
 
 namespace TrainStationBot
 {
@@ -19,13 +22,14 @@ namespace TrainStationBot
         public static ScreenUtilities.RECT GameWindowPosition;
 
         private bool IsActive = false;
-        private readonly Dictionary<string, List<Tuple<DateTime, int>>> Stats = new Dictionary<string, List<Tuple<DateTime, int>>>() { { "people", new List<Tuple<DateTime, int>>() }, { "mail", new List<Tuple<DateTime, int>>() } };
+        private readonly Dictionary<DateTime, Tuple<int, int>> Stats = new Dictionary<DateTime, Tuple<int, int>>();
         private int Cycle = 0;
 
         public MainForm()
         {
             InitializeComponent();
             LoadImages();
+            StartServer();
         }
 
         private readonly List<Mat> ads = new List<Mat>();
@@ -40,6 +44,15 @@ namespace TrainStationBot
             ads.Add(new Mat(@"c:\Projects\C#\TrainStationBot\TrainStationBot\images\ads\ad5.png").CvtColor(ColorConversionCodes.BGR2GRAY));
             ads.Add(new Mat(@"c:\Projects\C#\TrainStationBot\TrainStationBot\images\ads\ad6.png").CvtColor(ColorConversionCodes.BGR2GRAY));
             ads.Add(new Mat(@"c:\Projects\C#\TrainStationBot\TrainStationBot\images\ads\ad7.png").CvtColor(ColorConversionCodes.BGR2GRAY));
+            ads.Add(new Mat(@"c:\Projects\C#\TrainStationBot\TrainStationBot\images\ads\ad8.png").CvtColor(ColorConversionCodes.BGR2GRAY));
+            ads.Add(new Mat(@"c:\Projects\C#\TrainStationBot\TrainStationBot\images\ads\ad9.png").CvtColor(ColorConversionCodes.BGR2GRAY));
+            ads.Add(new Mat(@"c:\Projects\C#\TrainStationBot\TrainStationBot\images\ads\ad10.png").CvtColor(ColorConversionCodes.BGR2GRAY));
+            ads.Add(new Mat(@"c:\Projects\C#\TrainStationBot\TrainStationBot\images\ads\ad11.png").CvtColor(ColorConversionCodes.BGR2GRAY));
+            ads.Add(new Mat(@"c:\Projects\C#\TrainStationBot\TrainStationBot\images\ads\ad12.png").CvtColor(ColorConversionCodes.BGR2GRAY));
+            ads.Add(new Mat(@"c:\Projects\C#\TrainStationBot\TrainStationBot\images\ads\ad13.png").CvtColor(ColorConversionCodes.BGR2GRAY));
+            ads.Add(new Mat(@"c:\Projects\C#\TrainStationBot\TrainStationBot\images\ads\ad14.png").CvtColor(ColorConversionCodes.BGR2GRAY));
+            ads.Add(new Mat(@"c:\Projects\C#\TrainStationBot\TrainStationBot\images\ads\ad15.png").CvtColor(ColorConversionCodes.BGR2GRAY));
+            ads.Add(new Mat(@"c:\Projects\C#\TrainStationBot\TrainStationBot\images\ads\ad16.png").CvtColor(ColorConversionCodes.BGR2GRAY));
 
             arrow = new Mat(@"c:\Projects\C#\TrainStationBot\TrainStationBot\images\arrow.png").CvtColor(ColorConversionCodes.BGR2GRAY);
             box = new Mat(@"c:\Projects\C#\TrainStationBot\TrainStationBot\images\box.png").CvtColor(ColorConversionCodes.BGR2GRAY);
@@ -109,6 +122,7 @@ namespace TrainStationBot
 
                     if (!IsActive) return;
                     CheckForTrains();
+                    if (Cycle % 5 == 0) CheckForTrains(true);
 
                     if (!IsActive) return;
                     CheckForWhistle();
@@ -116,7 +130,7 @@ namespace TrainStationBot
                     if (!IsActive) return;
                     DoOCR();
 
-                    screen_rgb.SaveImage(@"c:\Projects\C#\TrainStationBot\TrainStationBot\images\output\screen-" + DateTime.Now.ToString("yyyyMMddHHmmss") + ".jpg");
+                    //SaveImage(@"c:\Projects\C#\TrainStationBot\TrainStationBot\images\output\screen-" + DateTime.Now.ToString("yyyyMMddHHmmss") + ".jpg");
 
                     screen_rgb.Dispose();
                     screen_gray.Dispose();
@@ -131,11 +145,11 @@ namespace TrainStationBot
 
         private void DoOCR()
         {
+            string s_people = "",
+                s_mail = "";
             try
             {
                 var bitmap = screen_rgb.ToBitmap();
-                string s_people = "",
-                    s_mail = "";
 
                 using (var engine = new Tesseract.TesseractEngine(@"./tessdata", "eng", Tesseract.EngineMode.Default))
                 {
@@ -158,17 +172,17 @@ namespace TrainStationBot
                 if (string.IsNullOrEmpty(s_mail))
                     s_mail = "0";
 
-                Stats["people"].Add(new Tuple<DateTime, int>(DateTime.Now, int.Parse(s_people)));
-                Stats["mail"].Add(new Tuple<DateTime, int>(DateTime.Now, int.Parse(s_mail)));
-
-                File.AppendAllLines("output.json", new string[] { "{\"time\": \"" + DateTime.Now.ToString("o") + "\",\"people\": " + s_people + ", \"mail\": " + s_mail + " }" });
+                if (s_mail != "0" && s_people != "0")
+                {
+                    Stats.Add(DateTime.Now, new Tuple<int, int>(int.Parse(s_people), int.Parse(s_mail)));
+                }
 
                 if (!IsActive) return;
                 Invoke(new Action(() => { PictureBoxOutput.Image = bitmap; }));
             }
             catch (Exception e)
             {
-                MessageBox.Show(e.Message + e.StackTrace, "DoOCR Exception");
+                AddOutput("OCR Error [$:'" + s_people + "', M:'" + s_mail + "'] " + e.Message + e.StackTrace);
             }
         }
 
@@ -180,7 +194,7 @@ namespace TrainStationBot
 
                 if (maxValue > 0.9)
                 {
-                    AddOutput("Found AD at " + maxLocation.X + "x" + maxLocation.Y + ": clicked");
+                    AddOutput("Found AD at " + maxLocation.X + "x" + maxLocation.Y);
                     MouseOperations.MouseClick(maxLocation.X + ad.Width - 10, maxLocation.Y + 10);
 
                     UpdateScore(TextboxScore1, "AD: " + maxValue.ToString(), Color.LightGreen);
@@ -196,9 +210,9 @@ namespace TrainStationBot
         {
             Detect("box", box, out double maxValue, out Point maxLocation);
 
-            if (maxValue > 0.85)
+            if (maxValue > 0.80)
             {
-                AddOutput("Found BOX at " + maxLocation.X + "x" + maxLocation.Y + ": clicked it");
+                AddOutput("Found BOX at " + maxLocation.X + "x" + maxLocation.Y);
                 MouseOperations.MouseClick(maxLocation.X + 20, 750);
 
                 WaitNSeconds(100);
@@ -284,22 +298,24 @@ namespace TrainStationBot
             }
         }
 
-        private void CheckForTrains()
+        private void CheckForTrains(bool _override = false)
         {
             Detect("train", arrow, out double maxValue, out Point maxLocation);
 
-            if (maxValue > 0.9)
+            if (_override || maxValue > 0.9)
             {
                 AddOutput("Found TRAIN: " + maxLocation.X + "x" + maxLocation.Y);
 
-                MouseOperations.MouseClick(900, 810);
+                MouseOperations.MouseClick(1340, 810);
 
                 WaitNSeconds(250);
 
-                MouseOperations.MouseClick(900, 810);
+                MouseOperations.MouseClick(1340, 810);
 
                 WaitNSeconds(250);
 
+                MouseOperations.MouseClick(720, 906);
+                WaitNSeconds(100);
                 MouseOperations.MouseClick(500, 906);
 
                 WaitNSeconds(250);
@@ -331,6 +347,50 @@ namespace TrainStationBot
             }
         }
 
+        private WebServer server;
+        private void StartServer()
+        {
+            server = new WebServer(o => o.WithUrlPrefix("http://+:9444/"))
+                .WithModule(new ActionModule("/stats_by_time", HttpVerbs.Any, ctx =>
+                {
+                    string json = "[";
+
+                    var records = Stats.OrderByDescending(x => x.Key).Take(1000).ToArray();
+
+                    for (int i = 0; i < records.Length; i++)
+                    {
+                        if (i != 0) json += ",";
+
+                        json += "{\"datetime\":\"" + records[i].Key.ToString("o") + "\",\"people\":" + records[i].Value.Item1.ToString() + ",\"mail\":" + records[i].Value.Item2.ToString() + "}";
+                    }
+
+                    json += "]";
+
+                    return ctx.SendStringAsync(json, "application/json", System.Text.Encoding.UTF8);
+                }))
+                .WithModule(new ActionModule("/stats", HttpVerbs.Any, ctx =>
+                {
+                    int people = 0, mail = 0;
+                    if (Stats.Count() > 0)
+                    {
+                        people = Stats.Last().Value.Item1;
+                        mail = Stats.Last().Value.Item2;
+                    }
+
+                    return ctx.SendStringAsync("{\"people\": " + people.ToString() + ", \"mail\": " + mail.ToString() + "}", "application/json", System.Text.Encoding.UTF8);
+                }))
+                .WithModule(new ActionModule("/", HttpVerbs.Any, ctx => ctx.SendStandardHtmlAsync(404)));
+
+            // Listen for state changes.
+            server.StateChanged += (s, e) =>
+            {
+                AddOutput("Server state: " + e.NewState.ToString());
+            };
+
+            server.RunAsync();
+        }
+
+
         private void MainForm_Load(object sender, EventArgs e)
         {
             RestoreWindowPosition();
@@ -340,6 +400,7 @@ namespace TrainStationBot
         {
             IsActive = false;
             SaveWindowPosition();
+            server.Dispose();
         }
 
         private void RestoreWindowPosition()
